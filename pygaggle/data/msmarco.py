@@ -69,7 +69,8 @@ class MsMarcoDataset(BaseModel):
         with open(path) as f:
             for line in f:
                 qid, query = line.rstrip().split('\t')
-                queries.append(MsMarcoExample(qid=qid,
+                if (qid) in run:
+                    queries.append(MsMarcoExample(qid=qid,
                                               text=query,
                                               candidates=run[qid],
                                               relevant_candidates=qrels[qid]))
@@ -78,7 +79,7 @@ class MsMarcoDataset(BaseModel):
     @classmethod
     def from_folder(cls,
                     folder: str,
-                    split: str = 'dev',
+                    split: str = 'train',
                     is_duo: bool = False) -> 'MsMarcoDataset':
         run_mono = "mono." if is_duo else ""
         query_path = os.path.join(folder, f"queries.{split}.small.tsv")

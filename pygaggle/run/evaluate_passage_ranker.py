@@ -24,7 +24,8 @@ from pygaggle.model import (SimpleBatchTokenizer,
                             T5BatchTokenizer,
                             RerankerEvaluator,
                             metric_names,
-                            MsMarcoWriter)
+                            MsMarcoWriter,
+                            TrecWriter)
 from pygaggle.data import MsMarcoDataset
 from pygaggle.settings import MsMarcoSettings
 
@@ -169,7 +170,7 @@ def main():
                          seq_class_transformer=construct_seq_class_transformer,
                          random=lambda _: RandomReranker())
     reranker = construct_map[options.method](options)
-    writer = MsMarcoWriter(args.output_file, args.overwrite_output)
+    writer = TrecWriter(args.output_file, args.overwrite_output)
     evaluator = RerankerEvaluator(reranker, options.metrics, writer=writer)
     width = max(map(len, args.metrics)) + 1
     logging.info("Reranking:")
