@@ -11,7 +11,7 @@ module load java
 python -um pygaggle.run.evaluate_passage_ranker --split dev \
 	                                                --method seq_class_transformer \
 							                                                --model castorini/monobert-large-msmarco \
-													                                                --dataset data/msmarco_ans_ltr/ \
+													                                                --dataset data/msmarco_dev_ltr/ \
 																			                                                --index-dir indexes/index-msmarco-passage-20191117-0ed488 \
 																									                                                --task msmarco \
-																															                                                --output-file runs/run.monobert.LTR_entire.dev.tsv
+																															                                                --output-file runs/run.monobert.LTR.dev.trec

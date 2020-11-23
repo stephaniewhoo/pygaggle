@@ -79,7 +79,7 @@ class MsMarcoDataset(BaseModel):
     @classmethod
     def from_folder(cls,
                     folder: str,
-                    split: str = 'train',
+                    split: str = 'dev',
                     is_duo: bool = False) -> 'MsMarcoDataset':
         run_mono = "mono." if is_duo else ""
         query_path = os.path.join(folder, f"queries.{split}.small.tsv")
