@@ -123,7 +123,7 @@ class MonoBERT(Reranker):
 
     @torch.no_grad()
     def rerank(self, query: Query, texts: List[Text]) -> List[Text]:
-        texts = deepcopy(texts)
+        #texts = deepcopy(texts)
         for text in texts:
             ret = self.tokenizer.encode_plus(query.text,
                                              text.text,
@@ -132,7 +132,18 @@ class MonoBERT(Reranker):
                                              return_tensors='pt')
             input_ids = ret['input_ids'].to(self.device)
             tt_ids = ret['token_type_ids'].to(self.device)
-            output, = self.model(input_ids, token_type_ids=tt_ids)
+            #output, = self.model(input_ids, token_type_ids=tt_ids)
+            outputs = self.model.bert(
+                input_ids,
+                token_type_ids=tt_ids,
+            )
+
+            pooled_output = outputs[1]
+            assert not self.model.training
+            pooled_output = self.model.dropout(pooled_output)
+            text.metadata['pooled_output'] = pooled_output.detach().cpu().numpy()
+            output = self.model.classifier(pooled_output)
+            assert text.score == 0.
             if output.size(1) > 1:
                 text.score = torch.nn.functional.log_softmax(
                                 output, 1)[0, -1].item()

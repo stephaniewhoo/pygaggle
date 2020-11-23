@@ -25,7 +25,7 @@ from pygaggle.model import (SimpleBatchTokenizer,
                             RerankerEvaluator,
                             metric_names,
                             MsMarcoWriter,
-                            TrecWriter)
+                            HiddenTrecWriter)
 from pygaggle.data import MsMarcoDataset
 from pygaggle.settings import MsMarcoSettings
 
@@ -144,7 +144,7 @@ def main():
                  opt('--split',
                      type=str,
                      default='dev',
-                     choices=('dev', 'eval')),
+                     choices=('train', 'dev', 'eval')),
                  opt('--batch-size', '-bsz', type=int, default=96),
                  opt('--device', type=str, default='cuda:0'),
                  opt('--is-duo', action='store_true'),
@@ -170,7 +170,7 @@ def main():
                          seq_class_transformer=construct_seq_class_transformer,
                          random=lambda _: RandomReranker())
     reranker = construct_map[options.method](options)
-    writer = TrecWriter(args.output_file, args.overwrite_output)
+    writer = HiddenTrecWriter(args.output_file, args.overwrite_output)
     evaluator = RerankerEvaluator(reranker, options.metrics, writer=writer)
     width = max(map(len, args.metrics)) + 1
     logging.info("Reranking:")
