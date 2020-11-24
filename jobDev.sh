@@ -14,4 +14,4 @@ python -um pygaggle.run.evaluate_passage_ranker \
 --dataset data/msmarco_ans_entire/ \
 --index-dir indexes/index-msmarco-passage-20191117-0ed488 \
 --task msmarco \
---output-file runs/run.monobert.ans_entire.dev.trec
+--output-file runs/run.monobert.ans_entire.dev
