@@ -17,7 +17,8 @@ __all__ = ['BatchTokenizer',
            'SimpleBatchTokenizer',
            'QueryDocumentBatchTokenizer',
            'SpacySenticizer',
-           'SpacyWordTokenizer']
+           'SpacyWordTokenizer',
+           'BERTBatchTokenize']
 TokenizerReturnType = Mapping[str, Union[torch.Tensor, List[int],
                                          List[List[int]],
                                          List[List[str]]]]
@@ -140,6 +141,27 @@ class T5BatchTokenizer(AppendEosTokenizerMixin, QueryDocumentBatchTokenizer):
         kwargs['max_length'] = 512
         super().__init__(*args, **kwargs)
 
+class BERTBatchTokenize:
+    def __init__(self,
+                 tokenizer: PreTrainedTokenizer,
+                 batch_size: int):
+        self.tokenizer = tokenizer
+        self.batch_size = batch_size
+
+    def encode(self, query_text:str, doc_texts: List[str]) -> TokenizerReturnType:
+        return self.tokenizer.batch_encode_plus([(query_text, text) for text in doc_texts],
+                                                return_token_type_ids=True,
+                                                return_attention_mask=True,
+                                                return_tensors='pt',
+                                                max_length=512)
+    def traverse_query_document(
+            self,
+            batch_input: QueryDocumentBatch) -> Iterable[QueryDocumentBatch]:
+        query = batch_input.query
+        for batch_idx in range(0, len(batch_input), self.batch_size):
+            docs = batch_input.documents[batch_idx:batch_idx + self.batch_size]
+            outputs = self.encode(query.text,[doc.text for doc in docs])
+            yield QueryDocumentBatch(query, docs, outputs)
 
 class T5DuoBatchTokenizer(AppendEosTokenizerMixin, QueryDocumentBatchTokenizer):
     def __init__(self, *args, **kwargs):
