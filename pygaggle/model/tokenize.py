@@ -148,19 +148,22 @@ class BERTBatchTokenize:
         self.tokenizer = tokenizer
         self.batch_size = batch_size
 
-    def encode(self, query_text:str, doc_texts: List[str]) -> TokenizerReturnType:
+    def encode(self, query_text: str, doc_texts: List[str]) -> TokenizerReturnType:
         return self.tokenizer.batch_encode_plus([(query_text, text) for text in doc_texts],
                                                 return_token_type_ids=True,
                                                 return_attention_mask=True,
                                                 return_tensors='pt',
-                                                max_length=512)
+                                                max_length=512,
+                                                padding="max_length",
+                                                truncation=True)
+
     def traverse_query_document(
             self,
             batch_input: QueryDocumentBatch) -> Iterable[QueryDocumentBatch]:
         query = batch_input.query
         for batch_idx in range(0, len(batch_input), self.batch_size):
             docs = batch_input.documents[batch_idx:batch_idx + self.batch_size]
-            outputs = self.encode(query.text,[doc.text for doc in docs])
+            outputs = self.encode(query.text, [doc.text for doc in docs])
             yield QueryDocumentBatch(query, docs, outputs)
 
 class T5DuoBatchTokenizer(AppendEosTokenizerMixin, QueryDocumentBatchTokenizer):
