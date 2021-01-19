@@ -168,6 +168,24 @@ class UnsupervisedTransformerReranker(Reranker):
                     text.score = max_score - 10000
         return texts
 
+class BERTBatchTokenize:
+    def __init__(self,
+                 tokenizer: PreTrainedTokenizer,
+                 batch_size: int):
+    def encode(self, query_text:str, doc_texts: List[str]) -> TokenizerReturnType:
+        return self.tokenizer.batch_encode_plus([(query_text, text) for text in doc_texts],
+                                                return_token_type_ids=True,
+                                                return_attention_mask=True,
+                                                return_tensors='pt',
+                                                max_length=512)
+    def traverse_query_document(
+            self,
+            batch_input: QueryDocumentBatch) -> Iterable[QueryDocumentBatch]:
+        query = batch_input.query
+        for batch_idx in range(0, len(batch_input), self.batch_size):
+            docs = batch_input.documents[batch_idx:batch_idx + self.batch_size]
+            outputs = self.encode(query.text,[doc.text for doc in docs])
+            yield QueryDocumentBatch(query, docs, outputs)
 
 class MonoBERT(Reranker):
     def __init__(self,
@@ -176,37 +194,33 @@ class MonoBERT(Reranker):
         self.model = model or self.get_model()
         self.tokenizer = tokenizer or self.get_tokenizer()
         self.device = next(self.model.parameters(), None).device
-
     @staticmethod
     def get_model(pretrained_model_name_or_path: str = 'castorini/monobert-large-msmarco',
                   *args, device: str = None, **kwargs) -> AutoModelForSequenceClassification:
         device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         device = torch.device(device)
         return AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path, *args, **kwargs).to(device).eval()
-
     @staticmethod
-    def get_tokenizer(pretrained_model_name_or_path: str = 'bert-large-uncased',
+    def get_tokenizer(pretrained_model_name_or_path: str = 'bert-large-uncased', batch_size=8,
                       *args, **kwargs) -> AutoTokenizer:
-        return AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=False, *args, **kwargs)
-
+        return BERTBatchTokenize(AutoTokenizer.from_pretrained(pretrained_model_name_or_path, *args, **kwargs), batch_size=batch_size)
     @torch.no_grad()
     def rerank(self, query: Query, texts: List[Text]) -> List[Text]:
         texts = deepcopy(texts)
-        for text in texts:
-            ret = self.tokenizer.encode_plus(query.text,
-                                             text.text,
-                                             max_length=512,
-                                             truncation=True,
-                                             return_token_type_ids=True,
-                                             return_tensors='pt')
-            input_ids = ret['input_ids'].to(self.device)
-            tt_ids = ret['token_type_ids'].to(self.device)
-            output, = self.model(input_ids, token_type_ids=tt_ids, return_dict=False)
+        batch_input = QueryDocumentBatch(query=query, documents=texts)
+        for batch in self.tokenizer.traverse_query_document(batch_input):
+            input_ids = batch.output['input_ids'].to(self.device)
+            attn_mask = batch.output['attention_mask'].to(self.device)
+            tt_ids = batch.output['token_type_ids'].to(self.device)
+            output, = self.model(input_ids,
+                                 attention_mask=attn_mask,
+                                 token_type_ids=tt_ids)
             if output.size(1) > 1:
-                text.score = torch.nn.functional.log_softmax(
-                                output, 1)[0, -1].item()
+                batch_scores = torch.nn.functional.log_softmax(output, 1)[0, -1].tolist()
             else:
-                text.score = output.item()
+                batch_scores = output.tolist()
+            for doc, score in zip(batch.documents, batch_scores):
+                doc.score = score
         return texts
 
 
