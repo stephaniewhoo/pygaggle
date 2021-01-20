@@ -196,11 +196,12 @@ class MonoBERT(Reranker):
             input_ids = batch.output['input_ids'].to(self.device)
             attn_mask = batch.output['attention_mask'].to(self.device)
             tt_ids = batch.output['token_type_ids'].to(self.device)
-            output, = self.model(input_ids,
+            outputs = self.model(input_ids,
                                  attention_mask=attn_mask,
                                  token_type_ids=tt_ids)
+            output = outputs.logits
             if output.size(1) > 1:
-                batch_scores = torch.nn.functional.log_softmax(output, 1)[0, -1].tolist()
+                batch_scores = torch.nn.functional.log_softmax(output, 1)[:,1].tolist()
             else:
                 batch_scores = output.tolist()
             for doc, score in zip(batch.documents, batch_scores):
