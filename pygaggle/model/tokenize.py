@@ -154,7 +154,7 @@ class BERTBatchTokenize:
                                                 return_attention_mask=True,
                                                 return_tensors='pt',
                                                 max_length=512,
-                                                padding="max_length",
+                                                padding="longest",
                                                 truncation=True)
 
     def traverse_query_document(
